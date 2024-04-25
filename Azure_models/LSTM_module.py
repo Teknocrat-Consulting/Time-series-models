@@ -6,6 +6,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import psutil
 import time
+import re
 
 # Use TensorFlow's Keras, not standalone Keras
 import tensorflow as tf
@@ -45,30 +46,56 @@ class LSTM_predictions():
         self.df = df
         self.df.dropna(inplace=True)
         self.epoch = epoch
+        self.pred_column = pred_column
+        self.date_col = date_col
+        self.date_formats = (
+        '%b-%y','%Y-%m-%d', '%d-%m-%Y', '%m/%d/%Y', '%Y/%m/%d', '%B %d, %Y', '%d-%b-%Y','%b %d, %Y', '%Y-%m',         
+        '%m/%Y','%B %Y', '%Y-%m-%d %H:%M', '%d-%m-%Y %H:%M:%S','%m/%d/%Y %I:%M %p','%Y-%m-%dT%H:%M:%S''%a, %d %b %Y %H:%M:%S GMT', '%A, %B %d, %Y'   
+        )
         print("Columns: ",self.df.columns)
         print("Data shape: ",self.df.shape)
-        self.df[date_col] = pd.to_datetime(self.df[date_col], errors='coerce')
-        self.df = self.df[[date_col,pred_column]]
+
+    def parse_dates(self,date_str):
+        for fmt in self.date_formats:
+            try:
+                return pd.to_datetime(date_str, format=fmt, exact=False)
+            except ValueError:
+                continue  # Continue trying other formats
+        return pd.NaT
+    
+    def clean_numeric_value(self,value):
+        # Remove commas and any non-numeric characters except dot, percent, and minus sign
+        value=str(value)
+        cleaned_value = re.sub(r'[^\d.]', '', value)
+        return str(cleaned_value)
+
+    def preprocess_data(self):
+        #print("preprocessing called")
+        self.df[self.pred_column] =  self.df[self.pred_column].apply(self.clean_numeric_value)
+        self.df[self.pred_column] = pd.to_numeric(self.df[self.pred_column], errors='coerce').astype(float)
+        self.df[self.date_col] =  self.df[self.date_col].apply(self.parse_dates)
+        print(self.df.info())
+        self.df = self.df[[self.date_col,self.pred_column]]
         print("*"*60)
 
-        data = df.filter([pred_column])
+        data = self.df.filter([self.pred_column])
         dataset = data.values
 
         # Get the number of rows to train the model on
         training_data_len = int(np.ceil( len(dataset) * .80 ))
-        train_data = df.iloc[0:int(training_data_len), :]
-        test_data = df.iloc[training_data_len - 60: , :]   
+        train_data = self.df.iloc[0:int(training_data_len), :]
+        test_data = self.df.iloc[training_data_len - 60: , :]   
 
         print("Train size :",train_data.shape)
         print("Test size :",test_data.shape)
 
-        self.train_data = train_data[[pred_column, date_col]].to_numpy()
-        self.test_data = test_data[[pred_column, date_col]].to_numpy()
+        self.train_data = train_data[[self.pred_column, self.date_col]].to_numpy()
+        self.test_data = test_data[[self.pred_column, self.date_col]].to_numpy()
 
         print("*"*60)
 
-    def plot(self,df,pred_column):
-        self.df[pred_column].plot(title=f'{pred_column} over Time')
+    def plot(self):
+        self.df[self.pred_column].plot(title=f'{self.pred_column} over Time')
 
     def create_sequences_lstm(self,data, seq_length=12):
         xs = []
@@ -95,7 +122,8 @@ class LSTM_predictions():
 
     @measure_usage
     def run(self):
-
+        self.preprocess_data()
+        self.plot()
         train_data = self.train_data
         test_data = self.test_data
 
@@ -122,7 +150,7 @@ class LSTM_predictions():
         print("*"*60)
 
         model = self.create_model(X_train)
-        print("New model running")
+        #print("New model running")
 
         X_train = X_train.astype('float32')
         X_test = X_test.astype('float32')
@@ -204,7 +232,6 @@ class LSTM_predictions():
         plt.grid(True)
         plt.show()
 
-df_azure = pd.read_csv("azure.csv")
-azure = LSTM_predictions(df_azure,"avg cpu",epoch=100)
-azure.plot(df_azure,"avg cpu")
-azure.run()
+# df_temp = pd.read_csv("daily-minimum-temperatures-in-me.csv")
+# temp = LSTM_predictions(df_temp,"Daily minimum temperatures","Date",epoch=20)
+# temp.run()
