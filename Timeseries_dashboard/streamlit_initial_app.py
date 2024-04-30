@@ -4,10 +4,6 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import time
 from datetime import timedelta
-import os
-import pickle
-from keras.models import load_model
-from keras.models import save_model
 from LSTM_streamlit_module import LSTM_predictions_streamlit
 
 
@@ -96,7 +92,7 @@ def make_predictions(df, pred_column, date_col, epochs):
     centre_align("Actual and Predicted scores")
     st.write(test_predictions)
 
-    return model,X_test,indices_test[-1],scaler,plot_over_time.set_index(date_col)
+    return model,X_test,indices_test[-1]
 
 def generate_future_data(model,test,num_days,ind_test):
     # Retrieve the last 12 values from the test set
@@ -133,22 +129,6 @@ def generate_future_data(model,test,num_days,ind_test):
 uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
 
 if uploaded_file is not None:
-
-    if 'model1' not in st.session_state:
-        st.session_state.model1 = None
-    if 'test1' not in st.session_state:
-        st.session_state.test1 = None
-    if 'ind_date' not in st.session_state:
-        st.session_state.ind_date = None
-    if 'scaler' not in st.session_state:
-        st.session_state.scaler = None
-    # if 'df_time' not in st.session_state.df_time:
-    #     st.session_state.df_time = None
-
-    file_name = uploaded_file.name.split(".csv")[0].strip()
-    #print("file_name : ",file_name)
-    model_name = "model" + "_" + file_name
-    #print(model_name)
     # Read uploaded CSV file
     df = pd.read_csv(uploaded_file)
      # Determine the last date in the dataframe
@@ -158,96 +138,19 @@ if uploaded_file is not None:
     total_df = pd.concat([df.head(5),df.tail(5)],axis=0)
     st.sidebar.write(total_df)
 
-    def save_data(model, test_set, last_date, scaler, df_pl,folder_name):
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
-        
-        model_file_path = os.path.join(folder_name, model_name + '.keras')
-        save_model(model, model_file_path)
-        np.save(os.path.join(folder_name, file_name + '_test_set.npy'), test_set)
-        with open(os.path.join(folder_name, file_name + '_last_date.pkl'), 'wb') as f:
-            pickle.dump(last_date, f)
-
-        with open(os.path.join(folder_name, file_name + '_scaler.pkl'), 'wb') as f:
-            pickle.dump(scaler, f)
-
-        df_pl.to_csv(os.path.join(folder_name, file_name + '_plot.csv'), index=True)
-        
-
-    def load_data(model_name,file_name):
-        model_file_path = os.path.join(file_name, model_name + '.keras')
-        model = load_model(model_file_path)
-        
-        test_set = np.load(os.path.join(file_name, file_name + '_test_set.npy'))
-        
-        with open(os.path.join(file_name, file_name + '_last_date.pkl'), 'rb') as f:
-            last_date = pickle.load(f)
-
-        with open(os.path.join(file_name, file_name + '_scaler.pkl'), 'rb') as f:
-            scaler = pickle.load(f)
-
-        df_pl = pd.read_csv(os.path.join(file_name, file_name + '_plot.csv'))
-        print(df_pl.info())
-        print(df.shape)
-    
-        return model, test_set, last_date, scaler, df_pl
-
     # Select target column and datetime column
     target_column = st.sidebar.selectbox("Select Target Column", df.columns)
     datetime_column = st.sidebar.selectbox("Select Datetime Column", df.columns)
 
+    # Select number of epochs
+    epochs = st.sidebar.slider("Select Number of Epochs", min_value=1, max_value=500, value=10)
+
+    next_pred_days = st.sidebar.slider("Select Days for future Prediction", min_value=1, max_value=365, value=1)
     # Button to start predictions
-    
-    folder_path = os.path.join(os.getcwd(), file_name)
-    if os.path.exists(folder_path) and os.path.isdir(folder_path):
-        print(f"The model '{file_name}' is present already.")
-        st.success("The model is already trained and saved, click below to get Future Predictions")
-
-        next_pred_days = st.slider("Select Days for future Prediction", min_value=1, max_value=365, value=1)
-
-        if st.button("Get Future Predictions"):
-            loaded_model, loaded_test_set, loaded_last_date,scaler,plot_over_time = load_data(model_name,file_name)
-            date_col = plot_over_time.columns[0]
-            #print(date_col)
-            centre_align("Overall Trend of Data till last available date")
-            st.line_chart(plot_over_time.set_index(date_col))
-            pred_data = generate_future_data(loaded_model, loaded_test_set, next_pred_days, loaded_last_date)
-            centre_align(f"Future predictions for next {next_pred_days} Days")
-            st.write(pred_data)
-            centre_align(f"Future predictions for next {next_pred_days} Days")
-            st.line_chart(pred_data)
-    else:
-        print(f"The model '{file_name}' has to be trained and saved.")
-
-        # Select number of epochs
-        epochs = st.sidebar.slider("Select Number of Epochs", min_value=1, max_value=500, value=10)
-        next_pred_days = st.sidebar.slider("Select Days for future Prediction", min_value=1, max_value=365, value=1)
-        if st.sidebar.button("Start Predictions"):
-            model1,test1,ind_date,scaler,df_time = make_predictions(df, target_column, datetime_column, epochs)
-            # print("model : ",type(model1))
-            # print("X_test : ",type(test1))
-            # print("last date : ", type(ind_date))
-
-            st.session_state.model1 = model1
-            st.session_state.test1 = test1
-            st.session_state.ind_date = ind_date
-            st.session_state.scaler = scaler
-            st.session_state.df_time = df_time
-            pred_data = generate_future_data(model1,test1,next_pred_days,ind_date)
-            centre_align(f"Future predictions for next {next_pred_days} Days")
-            st.write(pred_data)
-            centre_align(f"Future predictions for next {next_pred_days} Days")
-            st.line_chart(pred_data)
-
-            #print("model_1 : ", model1)
-
-        if st.sidebar.button("Save Model for Future Predictions"):
-            # print("model : ",type(st.session_state.model1))
-            # print("X_test : ",type(st.session_state.test1))
-            # print("last date : ", type(st.session_state.ind_date))
-            # print("file_name : ",file_name)
-            save_data(st.session_state.model1, st.session_state.test1, st.session_state.ind_date, st.session_state.scaler,st.session_state.df_time, file_name)
-            st.sidebar.success("Data Saved!!")
-
-
-
+    if st.sidebar.button("Start Predictions"):
+        model1,test1,ind_date = make_predictions(df, target_column, datetime_column, epochs)
+        pred_data = generate_future_data(model1,test1,next_pred_days,ind_date)
+        centre_align(f"Future predictions for next {next_pred_days} Days")
+        st.write(pred_data)
+        centre_align(f"Future predictions for next {next_pred_days} Days")
+        st.line_chart(pred_data)
