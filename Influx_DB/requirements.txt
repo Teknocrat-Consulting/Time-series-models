@@ -1,0 +1,10 @@
+influxdb-client
+pandas
+seaborn
+numpy
+matplotlib
+scikit-learn
+ipykernel
+tensorflow
+streamlit
+python-dotenv
