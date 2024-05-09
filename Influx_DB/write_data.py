@@ -2,17 +2,19 @@ import os,time
 import pandas as pd
 import matplotlib.pyplot as plt
 from influxdb_client import InfluxDBClient, WriteOptions
+import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()
 
 class Write_Data_InfluxDB:
-    def __init__(self,path,date_col):
+    def __init__(self,df,name,date_col):
 
         ## Read and load Data
-        self.path = path
-        self.name = self.path.split("\\")[-1].split(".csv")[-2].strip()
+        self.df = df
+        self.name =  name # self.path.split("\\")[-1].split(".csv")[-2].strip()
         #print("Name : ",self.name)
         self.measurement = "Teknocrat_" + self.name
+        #st.write(self.measurement)
         self.date_col = date_col
 
 
@@ -52,14 +54,15 @@ class Write_Data_InfluxDB:
 
     def run(self):
 
-        df = pd.read_csv(self.path)
-        df[self.date_col] = df[self.date_col].apply(self.parse_dates)
-        df.set_index(self.date_col,inplace=True)
 
-        write_data = self.write_data_to_influxdb(df)
+        self.df[self.date_col] = self.df[self.date_col].apply(self.parse_dates)
+        self.df.set_index(self.date_col,inplace=True)
+
+        write_data = self.write_data_to_influxdb(self.df)
         print(f"Data Written to Influx DB in {self.measurement}!!")
+        st.success(f"Data Written to Influx DB in {self.measurement}!!")
 
-path = r"C:\Users\rajpo\PycharmProjects\Tecnokrat\Time-series-models\Timeseries_dashboard\AAPL.csv"
-date_col = "timestamp"
-test  = Write_Data_InfluxDB(path,date_col)
-final_result = test.run()
+# path = r"C:\Users\rajpo\PycharmProjects\Tecnokrat\Time-series-models\Timeseries_dashboard\AAPL.csv"
+# date_col = "timestamp"
+# test  = Write_Data_InfluxDB(path,date_col)
+# final_result = test.run()
