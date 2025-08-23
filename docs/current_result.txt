@@ -1,0 +1,60 @@
+● This graph shows a Disk Storage Forecast with three key components:
+
+  Blue solid line (Historical): Your actual disk storage usage from January 1 to mid-February 2024, showing
+  steady growth from ~451 GB to ~499 GB.
+
+  Red dashed line (Forecast): Predicted future storage usage extending to March 1, 2024, projecting continued
+  growth to ~508 GB.
+
+  Pink shaded area (Confidence Interval): The uncertainty range around the forecast, indicating the model's
+  confidence in the prediction.
+
+  Key insights:
+  - Storage is growing at a consistent rate (~2-3 GB per week)
+  - The forecast predicts you'll reach ~508 GB by March 1st
+  - The narrow confidence interval suggests the model is fairly confident in this linear growth pattern
+  - At this rate, you may want to plan for storage expansion or cleanup before hitting capacity limits
+
+  The smooth trend suggests predictable, linear storage growth rather than sudden spikes.
+
+
+
+┌─────────────────────────────────────────────┐
+│            StorageForecastingPipeline       │
+│                                             │
+│  Orchestrates entire workflow:              │
+│  • Data collection                          │
+│  • Preprocessing                            │
+│  • Model training                           │
+│  • Forecasting                              │
+│  • Visualization                            │
+└─────────────┬───────────────────────────────┘
+              │
+              ▼
+    ┌─────────────────┐    ┌─────────────────┐
+    │ InfluxDBManager │    │   DiskMonitor   │
+    │                 │    │                 │
+    │ • Query data    │    │ • Real-time     │
+    │ • Store results │    │   monitoring    │
+    │ • Manage conn   │    │ • Data collect  │
+    └─────────────────┘    └─────────────────┘
+              │                       │
+              └───────────┬───────────┘
+                          │
+    ┌─────────────────────▼─────────────────┐
+    │           ARIMAForecaster             │
+    │                                       │
+    │ • Stationarity testing                │
+    │ • Parameter optimization              │
+    │ • Model fitting                       │
+    │ • Forecast generation                 │
+    └─────────────────┬─────────────────────┘
+                      │
+    ┌─────────────────▼─────────────────────┐
+    │         ForecastVisualizer            │
+    │                                       │
+    │ • Plot time series                    │
+    │ • Show forecasts                      │
+    │ • Highlight anomalies                 │
+    │ • Create dashboards                   │
+    └───────────────────────────────────────┘
